@@ -12,6 +12,7 @@ RUN apt-get -qq update && apt-get -qq -y install curl bzip2 \
     && apt-get -qq -y remove curl bzip2 \
     && apt-get -qq -y autoremove \
     && apt-get autoclean \
+    && apt-get install -qq -y libgl1-mesa-glx \
     && rm -rf /var/lib/apt/lists/* /var/log/dpkg.log \
     && conda clean --all --yes \
     && conda config --set ssl_verify no \
@@ -20,3 +21,6 @@ RUN apt-get -qq update && apt-get -qq -y install curl bzip2 \
     && pip install -r /tmp/requirements.txt
 
 ENV PATH /opt/conda/bin:$PATH
+ADD ./app.py /tmp/app.py
+ADD ./lib /tmp/lib
+CMD [ "python", "/tmp/app.py" ]

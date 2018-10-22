@@ -6,8 +6,8 @@ import requests
 import re
 from datetime import datetime, timedelta, time
 
-OPENSSL_FFMPEG = '/Users/patrickgreen/panacam/miniconda2/envs/env/bin/ffmpeg' #'/home/charlotteg_mintz/ffmpeg/ffmpeg' # os.environ("OPENSSL_FFMPEG")
-YOUTUBE_DL = '/Users/patrickgreen/panacam/miniconda2/envs/env/bin/youtube-dl' #'/usr/local/bin/youtube-dl'
+OPENSSL_FFMPEG = 'ffmpeg' #'/home/charlotteg_mintz/ffmpeg/ffmpeg' # os.environ("OPENSSL_FFMPEG")
+YOUTUBE_DL = 'youtube-dl' #'/usr/local/bin/youtube-dl'
 
 CAMS = [
     {'tz': 'ID', 'url': 'https://cf-stream.coastalwatch.com/cw/bondicamera.stream/chunklist.m3u8', 'type': 'youtube-dl', 'name': u'Guethary - Parlementia', 'page': u'guethary---parlementia-france_49095'}
@@ -71,7 +71,7 @@ class Camera:
         self.name = self._getname()
 
         commands = {
-            "youtube-dl": [(False, "{youtube_dl} " + url + " --ffmpeg-location {openssl_ffmpeg} -o - "), (False, "{openssl_ffmpeg} -i - -q:v 0 -f image2pipe -")],
+            "youtube-dl": [(False, "{youtube_dl} " + url + " -o - "), (False, "{openssl_ffmpeg} -i - -q:v 0 -f image2pipe -")],
 
             "ffmpeg": [(False, "{openssl_ffmpeg} -i " + url + " -f image2pipe -q:v 1 -")],
 
@@ -92,6 +92,7 @@ class Camera:
         currentpipe = None
         pipes = []
         for (shell, cmd) in self._getcmds():
+            print cmd
             if not shell:
                 cmd = shlex.split(cmd)
 
@@ -128,11 +129,11 @@ class Camera:
         bytes = ''
         while True:
             # Camera Expiry
-            if self.totalframes and self.f > self.totalframes:
-                self._doreset()
-
-            if self.pipes[0].poll() is not None:
-                self._doreset()
+            # if self.totalframes and self.f > self.totalframes:
+            #     self._doreset()
+            #
+            # if self.pipes[0].poll() is not None:
+            #     self._doreset()
 
             bytes += self.pipes[-1].stdout.read(1024)
 
