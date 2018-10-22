@@ -5,28 +5,11 @@ import numpy as np
 from PIL import Image
 from lib.camera import Camera
 from lib.panarama import Panarama
-import googleapiclient.discovery
-import googleapiclient.http
 import subprocess as sp
 
 
 application = Flask(__name__)
 TEST = False
-BUCKET_NAME = 'handy-contact-219622'
-storage = googleapiclient.discovery.build('storage', 'v1')
-
-#
-def upload(file_object):
-    body = {
-        'name': 'frame.jpeg',
-    }
-    req = storage.objects().insert(
-        bucket=BUCKET_NAME, body=body,
-        media_body=googleapiclient.http.MediaIoBaseUpload(
-            file_object, 'image/jpeg'))
-    resp = req.execute()
-    return resp
-
 
 def start():
     cam = Camera(test=TEST)
@@ -44,7 +27,7 @@ def start():
             # yield (b'--frame\r\n'
             #       b'Content-Type: image/jpeg\r\n\r\n' + frame + b'\r\n\r\n')
         else:
-            if cam.f % 20 == 0:
+            if cam.f % 16 == 0:
                 frame = np.flip(panarama.raw, axis=2)
                 im = Image.fromarray(frame)
                 dir = "/tmp/frame.jpeg"

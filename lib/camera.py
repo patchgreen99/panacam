@@ -5,13 +5,11 @@ import shlex
 import requests
 import re
 from datetime import datetime, timedelta, time
+import json
 
 OPENSSL_FFMPEG = 'ffmpeg' #'/home/charlotteg_mintz/ffmpeg/ffmpeg' # os.environ("OPENSSL_FFMPEG")
 YOUTUBE_DL = 'youtube-dl' #'/usr/local/bin/youtube-dl'
 
-CAMS = [
-    {'tz': 'ID', 'url': 'https://cf-stream.coastalwatch.com/cw/bondicamera.stream/chunklist.m3u8', 'type': 'youtube-dl', 'name': u'Guethary - Parlementia', 'page': u'guethary---parlementia-france_49095'}
-]
 
 class Camera:
     def __init__(self, type=None, url=None, test=False):
@@ -19,11 +17,14 @@ class Camera:
         self.url = url
         self.test = test
         self.framerate = 3
-        self.totalframes = None
+        self.totalframes = 2000
         self.f = -1
         self.cam = -1
         self.pipes = self._getpipes()
         self.name = self._getname()
+
+        # reread json
+        self._updatejsoncams()
 
     def _getwakezones(self):
         now = datetime.utcnow().time()
@@ -46,7 +47,7 @@ class Camera:
     def _getcams(self):
         out = []
         awakenow = self._getwakezones()
-        for cam in CAMS:
+        for cam in self.CAMS:
             tz = cam.get('tz')
             if not tz or tz in awakenow:
                 out.append(cam)
@@ -86,13 +87,21 @@ class Camera:
         else:
             return [(s,r.format(openssl_ffmpeg=OPENSSL_FFMPEG, youtube_dl=YOUTUBE_DL)) for s,r in commands[type]]
 
+
+    def _updatejsoncams(self):
+        sp.check_call('gsutil cp gs://handy-contact-219622.appspot.com/cams.json /tmp/cams.json', shell=True)
+        self.CAMS = json.load(file('/tmp/cams.json'))
+
+
     def _getpipes(self):
+        # reread json
+        self._updatejsoncams()
+
         # switch to the next cam every time this is called
         self.cam+=1
         currentpipe = None
         pipes = []
         for (shell, cmd) in self._getcmds():
-            print cmd
             if not shell:
                 cmd = shlex.split(cmd)
 
@@ -129,11 +138,11 @@ class Camera:
         bytes = ''
         while True:
             # Camera Expiry
-            # if self.totalframes and self.f > self.totalframes:
-            #     self._doreset()
-            #
-            # if self.pipes[0].poll() is not None:
-            #     self._doreset()
+            if self.totalframes and self.f > self.totalframes:
+                self._doreset()
+
+            if self.pipes[0].poll() is not None:
+                self._doreset()
 
             bytes += self.pipes[-1].stdout.read(1024)
 
