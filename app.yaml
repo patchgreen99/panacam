@@ -1,5 +1,6 @@
 steps:
 - name: 'gcr.io/cloud-builders/docker'
   args: [ 'build', '-t', 'gcr.io/handy-contact-219622/panacam', '.' ]
+  # args: [ 'build', '-t', 'gcr.io/handy-contact-219622/panacam', '.', '--build-arg', 'url=https://cf-stream.coastalwatch.com/cw/bondicamera.stream/chunklist.m3u8' , 'videolength=00:05:00', 'framerate=20']
 images:
 - 'gcr.io/handy-contact-219622/panacam'

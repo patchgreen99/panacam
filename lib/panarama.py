@@ -1,6 +1,5 @@
 import cv2
-from scipy.misc import imread, imresize
-from lib.features import *
+import numpy as np
 
 
 class Panarama:
@@ -8,96 +7,61 @@ class Panarama:
         self.dimensions = {"x1": 0, "x2": width, "y1": 0, "y2": height}
         self.raw = img
         self.dp = np.array([0, 0])
-        self.dr = np.array([0, 0])
-        self.zoomlevel = 0
-        self.lastzooms = []
+        self.maxfromtop = 0
+        self.minfrombot = 9999999999999
+        self.leftmostpoint = 0
+        self.rightmostpoint = 0
 
-        self.nonpolar = self.lastnonpolar = img
-        self.polar = self.lastpolar = self.parsepolar(img)
+        self.POS = 'LEFT_LAST'
+        self.DIR = 'NONE'
+        self.REQUIREDSTATESBEFORERESET = ['LEFT_LAST_GOING_RIGHT',
+                                          'LEFT_LAST_NONE',
+                                          'RIGHT_LAST_GOING_LEFT',
+                                          'RIGHT_LAST_NONE',
+                                          'NONE_GOING_RIGHT']
+
+        self.nonpolar = self.lastnonpolar = self.parsenonpolar(img)
 
 
-    def parsepolar(self, img):
-        height, width, _ = img.shape
-        middle = (height / 2, width / 2)
-        polar, r_i, theta_i = reproject_image_into_polar(img, middle)
-        polar = cv2.cvtColor(polar, cv2.COLOR_BGR2GRAY)
-        #polar = np.mod(np.sum(polar, axis=2), 255).astype(int)
-        #polar = cv2.adaptiveThreshold(polar, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY, 11, 2)
-        return polar[:,:180]
+    def parsenonpolar(self, src):
+        src = cv2.cvtColor(src, cv2.COLOR_BGR2GRAY)
+        return np.float32(src)
+
+
+    def horizontal(src1, src2):
+        p1 = cv2.phaseCorrelate(src1, src2)
+        r = np.array(list(p1[0])).astype("int")
+        return r, src2
 
 
     def stitch(self, img):
-        self.lastpolar = self.polar
         self.lastnonpolar = self.nonpolar
+        self.nonpolar = self.parsenonpolar(img)
 
-        self.nonpolar = img
-        self.polar = self.parsepolar(img)
-
-        dr, convPolar = zoom(self.lastpolar, self.polar)
-        dp1, conv = horizontal(self.lastnonpolar, self.nonpolar)
-        dp2, conv1 = vertical(self.lastnonpolar, self.nonpolar)
-        dp = np.array([dp1[0], dp2[1]])
+        dp1, conv = self.horizontal(self.lastnonpolar, self.nonpolar)
+        dp = np.array([dp1[0], dp1[1]])
         dp *= -1
 
-        self.dr = np.array([0, 0])
         self.dp = np.array([0, 0])
-
-        self.dr+=dr
-        self.dr*=-1
         self.dp+=dp
 
-        # # Zoom canvas
-        # zoom in is negative
-        # zoom out is positive
-        self.zoomlevel += dr[1]
-        self.lastzooms.append(dr[1])
-        print self.zoomlevel, sum(self.lastzooms)/len(self.lastzooms)
-
-        height, width, _ = self.raw.shape
-        if dr[1] < 0:
-            shift = int(np.sqrt(2) * dr[1] * -1 / 2.0)
-            print shift
-            # zoom in is negative
-            # height, width, _ = self.raw.shape
-            # newheight = height + shift * 2
-            # newwidth = width + shift * 2
-            # self.raw = imresize(self.raw, (newheight, newwidth))
-
-            self.dimensions["x1"] = max(self.dimensions["x1"] + shift, 0)
-            self.dimensions["x2"] = min(self.dimensions["x2"] - shift, width)
-            self.dimensions["y1"] = max(self.dimensions["y1"] + shift, 0)
-            self.dimensions["y2"] = min(self.dimensions["y2"] - shift, height)
-            (h, w, _) = self.raw[self.dimensions["y1"]:self.dimensions["y2"], self.dimensions["x1"]:self.dimensions["x2"]].shape
-            print (h, w, _)
-            img = imresize(img, (h, w))
-
-
-        elif dr[1] > 0:
-            shift = int(np.sqrt(2) * dr[1] / 2.0)
-            print shift
-            # zoom out is positive
-            # height, width, _ = self.raw.shape
-            # newheight = height - shift * 2
-            # newwidth = width - shift * 2
-            # self.raw = imresize(self.raw, (newheight, newwidth))
-
-            self.dimensions["x1"] = max(self.dimensions["x1"] - shift, 0)
-            self.dimensions["x2"] = min(self.dimensions["x2"] + shift, width)
-            self.dimensions["y1"] = max(self.dimensions["y1"] - shift, 0)
-            self.dimensions["y2"] = min(self.dimensions["y2"] + shift, height)
-            (h, w, _) = self.raw[self.dimensions["y1"]:self.dimensions["y2"], self.dimensions["x1"]:self.dimensions["x2"]].shape
-            print (h, w, _)
-            img = imresize(img, (h, w))
-
-
+        if self.dp[0] < 0:
+            self.DIR = "GOING_LEFT"
+        elif self.dp[0] > 0:
+            self.DIR = "GOING_RIGHT"
+        else:
+            self.DIR = "NONE"
 
         height, width, _ = self.raw.shape
         # LEFT
         if self.dp[0] < 0 and self.dimensions["x1"] + self.dp[0] < 0:
-            self.raw = np.hstack([np.ones((height,np.abs(self.dp[0]),3), dtype='uint8')*255,self.raw])
+            self.raw = np.hstack([np.ones((height,np.abs(self.dp[0]),3), dtype='uint8')*255, self.raw])
+
         # RIGHT
         elif self.dp[0] > 0 and self.dimensions["x2"] + self.dp[0] > width:
             self.raw = np.hstack([self.raw, np.ones((height, np.abs(self.dp[0]), 3), dtype='uint8')*255])
+            self.DIR = "GOING_RIGHT"
+
             self.dimensions["x1"] = self.dimensions["x1"] + self.dp[0]
             self.dimensions["x2"] = self.dimensions["x2"] + self.dp[0]
         else:
@@ -119,15 +83,35 @@ class Panarama:
             self.dimensions["y2"] = self.dimensions["y2"] + self.dp[1]
 
 
-
-        #print self.dimensions["y1"],self.dimensions["y2"],self.dimensions["x1"],self.dimensions["x2"]
         (h,w,_) =  self.raw[self.dimensions["y1"]:self.dimensions["y2"],self.dimensions["x1"]:self.dimensions["x2"]].shape
         (rawheight, rawwidth, _) = self.raw.shape
-        #print (h,w,_)
-        img = imresize(img, (h, w))
 
         tostream = np.vstack([np.ones((self.dimensions["y1"], w, 3), dtype='uint8')*255, img, np.ones((rawheight-self.dimensions["y2"] ,w , 3), dtype='uint8')*255])
         self.raw[:,self.dimensions["x1"]:self.dimensions["x2"]] = tostream
+
+        (rawheight, rawwidth, _) = self.raw.shape
+        self.maxfromtop = max(self.maxfromtop, self.dimensions["y1"])
+        self.minfrombot = min(self.minfrombot, self.dimensions["y2"])
+
+
+        # Just flatten bottom of image
+        # if self.dimensions["y1"] > 0:
+        #     self.raw[:self.maxfromtop] = np.ones((self.maxfromtop, rawwidth ,3), dtype='uint8')*255
+
+        if self.dimensions["y2"] != rawheight:
+            self.raw[self.minfrombot:] = np.ones((rawheight - self.minfrombot, rawwidth ,3), dtype='uint8')*255
+
+        #print "{}_{}".format(self.POS, self.DIR), "STATES " + str(self.REQUIREDSTATESBEFORERESET)
+        if self.REQUIREDSTATESBEFORERESET[-1] == "{}_{}".format(self.POS, self.DIR):
+            self.REQUIREDSTATESBEFORERESET.pop()
+
+        # set latest
+        if 0 == self.dimensions["x1"]:
+            self.POS = 'LEFT_LAST'
+        elif rawwidth ==  self.dimensions["x2"]:
+            self.POS = 'RIGHT_LAST'
+        else:
+            self.POS = 'NONE'
 
         # clean image
         #self.raw = self.raw[~np.all(np.sum(self.raw, axis=2) == 0, axis=1)]

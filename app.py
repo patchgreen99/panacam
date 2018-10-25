@@ -13,28 +13,35 @@ TEST = False
 
 def start():
     cam = Camera(test=TEST)
-    start = True
+    cam.start = True
     for img in cam:
-        if start:
+        if cam.start:
             height, width, _ = img.shape
             panarama = Panarama(img,height,width)
-            start = False
+            cam.start = False
         else:
             panarama.stitch(img)
 
-        if TEST:
-            frame = cv2.imencode('.jpg', panarama.raw)[1].tostring()
-            # yield (b'--frame\r\n'
-            #       b'Content-Type: image/jpeg\r\n\r\n' + frame + b'\r\n\r\n')
-        else:
-            if cam.f % 16 == 0:
+        # if no more states
+        if not panarama.REQUIREDSTATESBEFORERESET:
+            cam.resetnext = True
+
+        # either display at constant framerate (if zero display last frame)
+        if (cam.framerate > 0 and cam.f % cam.framerate == 0) or (cam.framerate == 0 and cam.resetnext):
+            if TEST:
+                img = cv2.imencode('.jpg', img)[1]
+                frame = img.tostring()
+                # yield (b'--frame\r\n'
+                #       b'Content-Type: image/jpeg\r\n\r\n' + frame + b'\r\n\r\n')
+            else:
                 frame = np.flip(panarama.raw, axis=2)
+                (h, w, _) = frame.shape
                 im = Image.fromarray(frame)
                 dir = "/tmp/frame.jpeg"
-                im.save(dir)
+                im = im.resize((w, h*2), Image.ANTIALIAS)
+                im.save(dir, quality=100)
                 sp.check_call('gsutil -m mv -a public-read /tmp/frame.jpeg gs://handy-contact-219622.appspot.com/frame.jpeg',shell=True)
 
-        start = False
 
 @application.route('/')
 def index():
