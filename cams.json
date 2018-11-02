@@ -1,1 +1,3 @@
-[{"tz": "ID", "url": "https://cf-stream.coastalwatch.com/cw/bondicamera.stream/chunklist.m3u8", "framerate": 20, "videolength": "00:05:00"}]
+[{"tz": "ID", "url": "https://cf-stream.coastalwatch.com/cw/bondicamera.stream/chunklist.m3u8", "framerate": 0, "videolength": "00:07:00"}]
+# https://cf-stream.coastalwatch.com/cw/maroubracamera.stream/chunklist.m3u8
+# https://cf-stream.coastalwatch.com/cw/manlycamerahd.stream/chunklist.m3u8

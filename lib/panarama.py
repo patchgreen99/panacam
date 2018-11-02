@@ -28,7 +28,7 @@ class Panarama:
         return np.float32(src)
 
 
-    def horizontal(src1, src2):
+    def horizontal(self, src1, src2):
         p1 = cv2.phaseCorrelate(src1, src2)
         r = np.array(list(p1[0])).astype("int")
         return r, src2
@@ -55,11 +55,11 @@ class Panarama:
         height, width, _ = self.raw.shape
         # LEFT
         if self.dp[0] < 0 and self.dimensions["x1"] + self.dp[0] < 0:
-            self.raw = np.hstack([np.ones((height,np.abs(self.dp[0]),3), dtype='uint8')*255, self.raw])
+            self.raw = np.hstack([np.zeros((height,np.abs(self.dp[0]),3), dtype='uint8')*255, self.raw])
 
         # RIGHT
         elif self.dp[0] > 0 and self.dimensions["x2"] + self.dp[0] > width:
-            self.raw = np.hstack([self.raw, np.ones((height, np.abs(self.dp[0]), 3), dtype='uint8')*255])
+            self.raw = np.hstack([self.raw, np.zeros((height, np.abs(self.dp[0]), 3), dtype='uint8')*255])
             self.DIR = "GOING_RIGHT"
 
             self.dimensions["x1"] = self.dimensions["x1"] + self.dp[0]
@@ -72,10 +72,10 @@ class Panarama:
         height, width, _ = self.raw.shape
         # UP
         if self.dp[1] < 0 and self.dimensions['y1'] + self.dp[1] < 0:
-            self.raw = np.vstack([np.ones((np.abs(self.dp[1]),width,3), dtype='uint8')*255, self.raw])
+            self.raw = np.vstack([np.zeros((np.abs(self.dp[1]),width,3), dtype='uint8')*255, self.raw])
         # DOWN
         elif self.dp[1] > 0 and self.dimensions['y2'] + self.dp[1] > height:
-            self.raw = np.vstack([self.raw, np.ones((np.abs(self.dp[1]), width, 3), dtype='uint8')*255])
+            self.raw = np.vstack([self.raw, np.zeros((np.abs(self.dp[1]), width, 3), dtype='uint8')*255])
             self.dimensions["y1"] = self.dimensions["y1"] + self.dp[1]
             self.dimensions["y2"] = self.dimensions["y2"] + self.dp[1]
         else:
@@ -86,7 +86,7 @@ class Panarama:
         (h,w,_) =  self.raw[self.dimensions["y1"]:self.dimensions["y2"],self.dimensions["x1"]:self.dimensions["x2"]].shape
         (rawheight, rawwidth, _) = self.raw.shape
 
-        tostream = np.vstack([np.ones((self.dimensions["y1"], w, 3), dtype='uint8')*255, img, np.ones((rawheight-self.dimensions["y2"] ,w , 3), dtype='uint8')*255])
+        tostream = np.vstack([np.zeros((self.dimensions["y1"], w, 3), dtype='uint8')*255, img, np.zeros((rawheight-self.dimensions["y2"] ,w , 3), dtype='uint8')*255])
         self.raw[:,self.dimensions["x1"]:self.dimensions["x2"]] = tostream
 
         (rawheight, rawwidth, _) = self.raw.shape
@@ -96,10 +96,10 @@ class Panarama:
 
         # Just flatten bottom of image
         # if self.dimensions["y1"] > 0:
-        #     self.raw[:self.maxfromtop] = np.ones((self.maxfromtop, rawwidth ,3), dtype='uint8')*255
+        #     self.raw[:self.maxfromtop] = np.zeros((self.maxfromtop, rawwidth ,3), dtype='uint8')*255
 
         if self.dimensions["y2"] != rawheight:
-            self.raw[self.minfrombot:] = np.ones((rawheight - self.minfrombot, rawwidth ,3), dtype='uint8')*255
+            self.raw[self.minfrombot:] = np.zeros((rawheight - self.minfrombot, rawwidth ,3), dtype='uint8')*255
 
         #print "{}_{}".format(self.POS, self.DIR), "STATES " + str(self.REQUIREDSTATESBEFORERESET)
         if self.REQUIREDSTATESBEFORERESET[-1] == "{}_{}".format(self.POS, self.DIR):

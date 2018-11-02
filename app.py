@@ -6,13 +6,16 @@ from PIL import Image
 from lib.camera import Camera
 from lib.panarama import Panarama
 import subprocess as sp
-
+import os
 
 application = Flask(__name__)
 TEST = False
 
 def start():
-    cam = Camera(test=TEST)
+    cams = [{"tz": "ID", "url": 'https://cf-stream.coastalwatch.com/cw/' + os.environ.get('CAMNAME', 'bondicamera') + '.stream/chunklist.m3u8',
+             "framerate": int(os.environ.get('FR', '20')), "videolength": os.environ.get('LENGTH', '00:06:00')}]
+
+    cam = Camera(cams, test=TEST)
     cam.start = True
     for img in cam:
         if cam.start:
@@ -37,10 +40,11 @@ def start():
                 frame = np.flip(panarama.raw, axis=2)
                 (h, w, _) = frame.shape
                 im = Image.fromarray(frame)
-                dir = "/tmp/frame.jpeg"
-                im = im.resize((w, h*2), Image.ANTIALIAS)
+                name = cams[0]['url'][:-22].split('/')[-1]
+                dir = "/tmp/frame-" +  name + ".jpeg"
+                #im = im.resize((w, h*2), Image.ANTIALIAS)
                 im.save(dir, quality=100)
-                sp.check_call('gsutil -m mv -a public-read /tmp/frame.jpeg gs://handy-contact-219622.appspot.com/frame.jpeg',shell=True)
+                sp.check_call('gsutil -m mv -a public-read ' + dir + ' gs://handy-contact-219622.appspot.com/frame-' + name + '.jpeg',shell=True)
 
 
 @application.route('/')

@@ -9,16 +9,17 @@ YOUTUBE_DL = 'youtube-dl'
 
 
 class Camera:
-    def __init__(self, type=None, url=None, test=False):
+    def __init__(self, cams, type=None, url=None, test=False):
         self.type = type
         self.url = url
         self.test = test
         self.f = -1
         self.cam = -1
         self.resetnext = False
+        self.CAMS = cams
 
         # reread json
-        self.CAMS = self._getjsoncams()
+        #self.CAMS = self._getjsoncams()
 
     def _getwakezones(self):
         now = datetime.utcnow().time()
@@ -60,6 +61,7 @@ class Camera:
         self.framerate = self.CAMS[0]["framerate"]
         self.resetnext = False
         self.start = True
+        print "{openssl_ffmpeg} -i $({youtube_dl} --get-url ".format(openssl_ffmpeg=OPENSSL_FFMPEG, youtube_dl=YOUTUBE_DL) + self.CAMS[0]["url"] + ") -ss 00:00:00 -t " + self.CAMS[0]["videolength"] + " -q:v 0 -c:v copy -y -c:a copy /tmp/out.mp4"
         sp.check_call(
             "{openssl_ffmpeg} -i $({youtube_dl} --get-url ".format(openssl_ffmpeg=OPENSSL_FFMPEG, youtube_dl=YOUTUBE_DL) + self.CAMS[0]["url"] + ") -ss 00:00:00 -t " + self.CAMS[0]["videolength"] + " -q:v 0 -c:v copy -y -c:a copy /tmp/out.mp4", shell=True)
 
@@ -75,11 +77,11 @@ class Camera:
         while True:
             if self.resetnext or not success:
                 # grab new cams file
-                if any(x != y for x, y in zip(self._getjsoncams(), self.CAMS)):
-                    self.CAMS = self._getjsoncams()
-                else:
-                    # move round to next cam
-                    self.CAMS.append(self.CAMS.pop())
+                # if any(x != y for x, y in zip(self._getjsoncams(), self.CAMS)):
+                #     self.CAMS = self._getjsoncams()
+                # else:
+                #     # move round to next cam
+                #     self.CAMS.append(self.CAMS.pop())
 
                 self._savevid()
                 vidcap = cv2.VideoCapture('/tmp/out.mp4')

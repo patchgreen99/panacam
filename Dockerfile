@@ -32,6 +32,7 @@ RUN apt-get -qq update && apt-get -qq -y install curl bzip2 unzip python \
 ENV PATH /tmp/google-cloud-sdk/bin:$PATH
 ADD ./app.py /tmp/app.py
 ADD ./lib /tmp/lib
-ADD ./testbali.mp4 /tmp/testbali.mp4
-# CMD python /tmp/app.py $url $framerate $videolength
+ENV CAMNAME $url
+# ADD ./testbali.mp4 /tmp/testbali.mp4
+# CMD python /tmp/main.py $url $framerate $videolength
 CMD [ "python", "/tmp/app.py" ]
